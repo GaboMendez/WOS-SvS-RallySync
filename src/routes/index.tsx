@@ -110,7 +110,6 @@ function TabView({ ts, update, audio, vibrate, tabId }: { ts: TabState; update: 
     [team, ts.players],
   );
   const { rows, longest } = useMemo(() => computeSchedule(members), [members]);
-  const sig = rows.map((r) => `${r.player.id}:${r.offset}`).join(",") + team?.id;
 
   const setTeam = (id: string, fn: (ids: string[]) => string[]) =>
     update((t) => ({ ...t, teams: t.teams.map((tm) => (tm.id === id ? { ...tm, playerIds: fn(tm.playerIds) } : tm)) }));
@@ -170,7 +169,9 @@ function TabView({ ts, update, audio, vibrate, tabId }: { ts: TabState; update: 
           Launch plan {team && <span className="text-primary">· {team.name}</span>}
         </h2>
         {team ? (
-          <Countdown key={sig} rows={rows} longest={longest} teamName={team.name} audio={audio} vibrate={vibrate} />
+          <Countdown key={team.id} rows={rows} longest={longest} teamName={team.name} audio={audio} vibrate={vibrate}
+            timerState={(ts.timerStates ?? {})[team.id] ?? null}
+            onTimerStateChange={(newState) => update((t) => ({ ...t, timerStates: { ...(t.timerStates ?? {}), [team.id]: newState } }))} />
         ) : (
           <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">Select or create a team.</div>
         )}

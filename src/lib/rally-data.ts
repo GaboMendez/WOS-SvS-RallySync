@@ -1,7 +1,9 @@
 export type TabId = "timing" | "pets1" | "pets2" | "references";
 export interface Player { id: string; name: string; march: number; tag: string }
 export interface Team { id: string; name: string; playerIds: string[] }
-export interface TabState { players: Player[]; teams: Team[]; selectedTeamId: string | null }
+export type TimerPhase = "idle" | "ready" | "running" | "paused" | "done";
+export interface TimerState { phase: TimerPhase; elapsed: number; startTime: number }
+export interface TabState { players: Player[]; teams: Team[]; selectedTeamId: string | null; timerStates: Record<string, TimerState> }
 export type AppState = Record<TabId, TabState>;
 
 export const TABS: { id: TabId; label: string }[] = [
@@ -30,6 +32,7 @@ export function initialState(): AppState {
       }),
       teams: [],
       selectedTeamId: null,
+      timerStates: {},
     };
   });
   return out;

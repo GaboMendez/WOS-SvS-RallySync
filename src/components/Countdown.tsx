@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { cue, unlockAudio } from "@/lib/cues";
-import type { ScheduleRow } from "@/lib/rally-data";
+import type { ScheduleRow, TimerPhase, TimerState } from "@/lib/rally-data";
 import { TagBadge } from "@/components/TagBadge";
 
-type Phase = "idle" | "ready" | "running" | "paused" | "done";
 const HOLD = 300_000; // 5-minute countdown after the final launch, before arrival
 // const HOLD = 20_000; // 20-seconds countdown after the final launch, before arrival
 const PRE = 3000;
@@ -14,16 +13,36 @@ function fmtMMSS(ms: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function Countdown({ rows, longest, teamName, audio, vibrate }: {
+const IDLE_PHASE: TimerPhase = "idle";
+
+export function Countdown({ rows, longest, teamName, audio, vibrate, timerState, onTimerStateChange }: {
   rows: ScheduleRow[]; longest: number; teamName: string; audio: boolean; vibrate: boolean;
+  timerState: TimerState | null; onTimerStateChange: (state: TimerState) => void;
 }) {
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [elapsed, setElapsed] = useState(-PRE);
+  const [phase, setPhase] = useState<TimerPhase>(timerState?.phase ?? IDLE_PHASE);
+  const [elapsed, setElapsed] = useState<number>(timerState?.elapsed ?? -PRE);
   const [confirmReset, setConfirmReset] = useState(false);
-  const startRef = useRef(0);
+  const startRef = useRef(timerState?.startTime ?? 0);
   const fired = useRef<Set<string>>(new Set());
   const prefs = useRef({ audio, vibrate });
   prefs.current = { audio, vibrate };
+
+  // Sync with external timer state when team changes
+  useEffect(() => {
+    if (timerState) {
+      setPhase(timerState.phase);
+      setElapsed(timerState.elapsed);
+      startRef.current = timerState.startTime;
+      if (timerState.phase !== "running") {
+        fired.current = new Set();
+      }
+    }
+  }, [timerState?.phase]); // Only sync on phase change (team switch)
+
+  // Notify parent of state changes
+  const notifyChange = useCallback((newPhase: TimerPhase, newElapsed: number) => {
+    onTimerStateChange({ phase: newPhase, elapsed: newElapsed, startTime: startRef.current });
+  }, [onTimerStateChange]);
 
   const offsets = [...new Set(rows.map((r) => r.offset))].sort((a, b) => a - b);
   const maxOffset = offsets[offsets.length - 1] ?? 0;
@@ -66,6 +85,7 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
         cue("final", a, v);
         setPhase("done");
         setElapsed(doneMs);
+        notifyChange("done", doneMs);
       }
     }, 40);
     return () => window.clearInterval(id);
@@ -78,10 +98,11 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
     startRef.current = performance.now() + PRE;
     setElapsed(-PRE);
     setPhase("running");
+    notifyChange("running", -PRE);
   };
-  const pause = () => setPhase("paused");
-  const resume = () => { unlockAudio(); startRef.current = performance.now() - elapsed; setPhase("running"); };
-  const reset = () => { setPhase("idle"); setElapsed(-PRE); fired.current = new Set(); setConfirmReset(false); };
+  const pause = () => { setPhase("paused"); notifyChange("paused", elapsed); };
+  const resume = () => { unlockAudio(); startRef.current = performance.now() - elapsed; setPhase("running"); notifyChange("running", elapsed); };
+  const reset = () => { setPhase("idle"); setElapsed(-PRE); fired.current = new Set(); setConfirmReset(false); notifyChange("idle", -PRE); };
 
   if (rows.length < 2) {
     return (
