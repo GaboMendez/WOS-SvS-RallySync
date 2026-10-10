@@ -5,6 +5,19 @@ import { canVibrate } from "@/lib/cues";
 import { Countdown } from "@/components/Countdown";
 import { TagBadge } from "@/components/TagBadge";
 
+// Asset imports
+import petsActiveNotExpedition from "@/assets/pets-active-not-expedition-facility.png";
+import notPetsActiveNotExpedition from "@/assets/not-pets-active-not-expedition-facility.png";
+import notPetsActiveWithExpedition from "@/assets/not-pets-active-with-expedition-facility.png";
+import petsActiveWithExpedition from "@/assets/pets-active-with-expedition-facility.png";
+
+const REFERENCES = [
+  { src: petsActiveNotExpedition, alt: "Pets + No Exp", desc: "Your march time when pets are active and no expedition facility" },
+  { src: notPetsActiveNotExpedition, alt: "No Pets + No Exp", desc: "Your march time when no pets and no expedition facility" },
+  { src: notPetsActiveWithExpedition, alt: "No Pets + Exp", desc: "Your march time when no pets but have expedition facility" },
+  { src: petsActiveWithExpedition, alt: "Pets + Exp", desc: "Your march time when pets are active and have expedition facility" },
+];
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -65,7 +78,7 @@ function Index() {
         </div>
       </header>
 
-      <nav className="sticky top-0 z-10 -mx-3 mb-4 grid grid-cols-3 gap-1 bg-background/90 px-3 py-2 backdrop-blur sm:mx-0 sm:px-0">
+      <nav className="sticky top-0 z-10 -mx-3 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-1 bg-background/90 px-3 py-2 backdrop-blur sm:mx-0 sm:px-0">
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)}
             className={`rounded-lg py-3 font-display text-sm font-bold uppercase tracking-wide sm:text-lg ${tab === t.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
@@ -74,7 +87,7 @@ function Index() {
         ))}
       </nav>
 
-      <TabView key={tab} ts={ts} update={update} audio={audio} vibrate={vibrate && vibOk} />
+      <TabView key={tab} ts={ts} update={update} audio={audio} vibrate={vibrate && vibOk} tabId={tab} />
     </div>
   );
 }
@@ -88,7 +101,9 @@ function Toggle({ on, onClick, label, disabled }: { on: boolean; onClick: () => 
   );
 }
 
-function TabView({ ts, update, audio, vibrate }: { ts: TabState; update: (fn: (t: TabState) => TabState) => void; audio: boolean; vibrate: boolean }) {
+function TabView({ ts, update, audio, vibrate, tabId }: { ts: TabState; update: (fn: (t: TabState) => TabState) => void; audio: boolean; vibrate: boolean; tabId: TabId }) {
+  if (tabId === "references") return <ReferencesTab />;
+
   const team = ts.teams.find((t) => t.id === ts.selectedTeamId) ?? null;
   const members = useMemo(
     () => (team ? team.playerIds.map((id) => ts.players.find((p) => p.id === id)).filter(Boolean) as Player[] : []),
@@ -160,6 +175,25 @@ function TabView({ ts, update, audio, vibrate }: { ts: TabState; update: (fn: (t
           <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">Select or create a team.</div>
         )}
       </section>
+    </div>
+  );
+}
+
+function ReferencesTab() {
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border bg-card p-4">
+        <h2 className="font-display text-lg font-bold uppercase">March Time by Square</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Find your square around the rally target. Match your setup: pets active? Alliance has expedition facility?</p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {REFERENCES.map((ref) => (
+          <div key={ref.alt} className="rounded-xl border bg-card p-3">
+            <img src={ref.src} alt={ref.alt} className="w-full rounded-lg border" />
+            <p className="mt-2 text-sm font-medium">{ref.desc}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

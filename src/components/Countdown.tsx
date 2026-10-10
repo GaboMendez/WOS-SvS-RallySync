@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { cue, unlockAudio } from "@/lib/cues";
 import type { ScheduleRow } from "@/lib/rally-data";
-import { TagBadge } from "./TagBadge";
+import { TagBadge } from "@/components/TagBadge";
 
 type Phase = "idle" | "ready" | "running" | "paused" | "done";
 const HOLD = 300_000; // 5-minute countdown after the final launch, before arrival
+// const HOLD = 20_000; // 20-seconds countdown after the final launch, before arrival
 const PRE = 3000;
 const NOW_WINDOW = 1500;
 
@@ -26,7 +27,7 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
 
   const offsets = [...new Set(rows.map((r) => r.offset))].sort((a, b) => a - b);
   const maxOffset = offsets[offsets.length - 1] ?? 0;
-  const doneMs = maxOffset * 1000 + HOLD;
+  const doneMs = HOLD + longest * 1000;
 
   useEffect(() => {
     if (phase !== "running") return;
@@ -43,6 +44,11 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
         if (e >= o * 1000 && !fired.current.has(k)) {
           fired.current.add(k);
           if (e < o * 1000 + NOW_WINDOW) cue(o === maxOffset ? "final" : "launch", a, v);
+        }
+        const k2 = `r${o}`;
+        if (e >= o * 1000 + HOLD && !fired.current.has(k2)) {
+          fired.current.add(k2);
+          cue("final", a, v);
         }
       }
       const left = doneMs - e;
@@ -85,10 +91,11 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
     );
   }
 
-  const status = (o: number) => {
+  const status = (o: number, march: number) => {
     if (phase === "idle" || phase === "ready") return "upcoming";
     const ms = o * 1000;
-    if (elapsed >= ms + NOW_WINDOW) return "launched";
+    if (elapsed >= ms + HOLD + march * 1000) return "arrived";
+    if (elapsed >= ms + HOLD) return "launched";
     if (elapsed >= ms) return "now";
     return "upcoming";
   };
@@ -99,13 +106,17 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
   const nextRows = nextOffset !== undefined ? rows.filter((r) => r.offset === nextOffset) : [];
   const nowRows = nowOffset !== undefined ? rows.filter((r) => r.offset === nowOffset) : [];
   const active = phase === "running" || phase === "paused";
+  const firstOffset = offsets[0] ?? 0;
+  const firstPlayerElapsed = elapsed - firstOffset * 1000;
+  const allMarching = firstPlayerElapsed > HOLD;
 
   let big = "";
   let label = "";
   if (inPre) { big = String(Math.ceil(-elapsed / 1000)); label = "Get ready"; }
   else if (nowRows.length && !nextRows.length) { big = "GO"; label = "Final launch"; }
   else if (nextRows.length) { big = ((nextOffset! * 1000 - elapsed) / 1000).toFixed(1); label = "Next launch in"; }
-  else { big = fmtMMSS(doneMs - elapsed); label = "Arrival in"; }
+  else if (allMarching) { big = fmtMMSS(longest * 1000 - (firstPlayerElapsed - HOLD)); label = "All arrived in"; }
+  else { big = fmtMMSS(HOLD - (elapsed - maxOffset * 1000)); label = "Last rally ending"; }
 
   return (
     <div className="space-y-4">
@@ -120,19 +131,19 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
           <button onClick={start} className="mt-4 w-full rounded-lg bg-accent py-4 font-display text-2xl font-bold uppercase tracking-wider text-accent-foreground active:scale-[0.98]">
             Start countdown
           </button>
-          <p className="mt-2 text-center text-xs text-muted-foreground">3-2-1 ready check, launches in order, then a <b className="digits text-foreground">5:00</b> countdown to arrival.</p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">3-2-1 ready check, START for each player, then <b className="digits text-foreground">5:00</b> rally countdown.</p>
         </div>
       )}
 
       {phase !== "idle" && (
         <div className={`rounded-xl border bg-card p-5 text-center ${nowRows.length || inPre ? "glow-accent" : ""}`}>
-          <p className="font-display text-sm uppercase tracking-widest text-muted-foreground">{phase === "done" ? "Rallies arriving" : label}</p>
+          <p className="font-display text-sm uppercase tracking-widest text-muted-foreground">{phase === "done" ? "Rallies arrived" : label}</p>
           <p className={`digits text-[clamp(4rem,22vw,8rem)] font-extrabold leading-none ${nowRows.length ? "text-accent" : "text-primary"}`}>
             {phase === "done" ? "✓" : big}
           </p>
           {nowRows.length > 0 && phase !== "done" && (
             <p className="mt-2 font-display text-3xl font-bold uppercase text-accent">
-              Launch now: {nowRows.map((r) => r.player.name).join(" + ")}
+              START now: {nowRows.map((r) => r.player.name).join(" + ")}
             </p>
           )}
           {!inPre && nextRows.length > 0 && (
@@ -159,13 +170,18 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
       )}
 
       <div className="overflow-hidden rounded-xl border">
-        <div className="grid grid-cols-[2rem_minmax(0,1fr)_3.5rem_3.5rem_5.5rem] gap-2 bg-secondary px-3 py-2 font-display text-xs uppercase tracking-wider text-muted-foreground">
-          <span>#</span><span>Player</span><span className="text-right">March</span><span className="text-right">Delay</span><span className="text-right">Status</span>
+        <div className="grid grid-cols-[2rem_minmax(0,1fr)_3.5rem_3.5rem_4rem_4rem_5rem] gap-2 bg-secondary px-3 py-2 font-display text-xs uppercase tracking-wider text-muted-foreground">
+          <span>#</span><span>Player</span><span className="text-right">March</span><span className="text-right">Delay</span><span className="text-right">Rally</span><span className="text-right">March</span><span className="text-right">Status</span>
         </div>
         {rows.map((r) => {
-          const s = status(r.offset);
+          const s = status(r.offset, r.player.march);
+          const playerElapsed = elapsed - r.offset * 1000;
+          const rallyLeft = playerElapsed > 0 && playerElapsed < HOLD ? HOLD - playerElapsed : 0;
+          const marchLeft = playerElapsed > HOLD ? (r.player.march * 1000 - (playerElapsed - HOLD)) : 0;
+          const isRallying = playerElapsed > 0 && playerElapsed < HOLD;
+          const isMarching = playerElapsed > HOLD && playerElapsed < HOLD + r.player.march * 1000;
           return (
-            <div key={r.player.id} className={`grid grid-cols-[2rem_minmax(0,1fr)_3.5rem_3.5rem_5.5rem] items-center gap-2 border-t px-3 py-2.5 ${s === "now" ? "bg-accent text-accent-foreground" : s === "launched" ? "opacity-50" : ""}`}>
+            <div key={r.player.id} className={`grid grid-cols-[2rem_minmax(0,1fr)_3.5rem_3.5rem_4rem_4rem_5rem] items-center gap-2 border-t px-3 py-2.5 ${s === "now" ? "bg-accent text-accent-foreground" : s === "launched" ? "bg-primary/20" : s === "arrived" ? "opacity-50" : ""}`}>
               <span className="digits font-bold">{r.order}</span>
               <span className="flex min-w-0 items-center gap-2">
                 <span className="truncate font-semibold">{r.player.name}</span>
@@ -174,12 +190,14 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
               </span>
               <span className="digits text-right">{r.player.march}s</span>
               <span className="digits text-right font-bold">+{r.offset}s</span>
-              <span className="text-right font-display text-sm font-bold uppercase">{s === "now" ? "Launch!" : s === "launched" ? "Launched" : "Upcoming"}</span>
+              <span className="text-right digits text-sm font-bold">{isRallying ? fmtMMSS(rallyLeft) : "-"}</span>
+              <span className="text-right digits text-sm font-bold">{isMarching ? fmtMMSS(marchLeft) : "-"}</span>
+              <span className="text-right font-display text-sm font-bold uppercase">{s === "now" ? "Started" : s === "launched" ? "Launched" : s === "arrived" ? "Arrived" : "Upcoming"}</span>
             </div>
           );
         })}
         <div className="border-t bg-secondary px-3 py-2 text-sm text-muted-foreground">
-          After the final launch, a <b className="digits text-primary">5:00</b> countdown runs before the rallies arrive.
+          After each player starts, a <b className="digits text-primary">5:00</b> rally countdown runs before they arrive.
         </div>
       </div>
     </div>
