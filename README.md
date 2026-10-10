@@ -30,10 +30,10 @@ A web-based coordination tool for synchronizing rally attacks in Whiteout Surviv
 
 ```sh
 # Install dependencies
-npm install
+bun install
 
 # Start development server
-npm run dev
+bun run dev
 ```
 
 ## Tech Stack
@@ -51,10 +51,10 @@ This project is configured for Vercel deployment:
 
 ```sh
 # Build for production
-npm run build
+bun run build
 
 # Preview production build
-npm run preview
+bun run preview
 ```
 
 ## Usage
