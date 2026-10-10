@@ -210,6 +210,13 @@ function Roster({ ts, update, team, setTeam }: {
 }) {
   const [edit, setEdit] = useState(false);
   const [n, setN] = useState({ name: "", march: "", tag: "" });
+  const [allianceFilter, setAllianceFilter] = useState<string>("all");
+
+  const alliances = useMemo(() => ["all", ...new Set(ts.players.map((p) => p.tag).filter(Boolean))].sort(), [ts.players]);
+  const filteredPlayers = useMemo(
+    () => (allianceFilter === "all" ? ts.players : ts.players.filter((p) => p.tag === allianceFilter)),
+    [ts.players, allianceFilter],
+  );
   const editP = (id: string, patch: Partial<Player>) => update((t) => ({ ...t, players: t.players.map((p) => (p.id === id ? { ...p, ...patch } : p)) }));
   const add = () => {
     const m = Number(n.march);
@@ -230,8 +237,18 @@ function Roster({ ts, update, team, setTeam }: {
           {edit ? "Done" : "Edit"}
         </button>
       </div>
+      {alliances.length > 1 && !edit && (
+        <div className="mb-2">
+          <select value={allianceFilter} onChange={(e) => setAllianceFilter(e.target.value)}
+            className="w-full rounded-md border bg-background px-2 py-1.5 text-sm">
+            {alliances.map((a) => (
+              <option key={a} value={a}>{a === "all" ? "All Alliances" : a}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="space-y-1.5">
-        {ts.players.map((p) => {
+        {filteredPlayers.map((p) => {
           const inTeam = team?.playerIds.includes(p.id);
           if (edit) {
             return (

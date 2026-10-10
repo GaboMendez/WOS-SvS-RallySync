@@ -183,10 +183,12 @@ export function Countdown({ rows, longest, teamName, audio, vibrate }: {
           return (
             <div key={r.player.id} className={`grid grid-cols-[2rem_minmax(0,1fr)_3.5rem_3.5rem_4rem_4rem_5rem] items-center gap-2 border-t px-3 py-2.5 ${s === "now" ? "bg-accent text-accent-foreground" : s === "launched" ? "bg-primary/20" : s === "arrived" ? "opacity-50" : ""}`}>
               <span className="digits font-bold">{r.order}</span>
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate font-semibold">{r.player.name}</span>
-                <TagBadge tag={r.player.tag} />
-                {r.first && <span className="shrink-0 rounded bg-accent px-1.5 text-[10px] font-bold uppercase text-accent-foreground">1st</span>}
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="font-semibold">{r.player.name}</span>
+                <span className="flex items-center gap-1.5">
+                  <TagBadge tag={r.player.tag} />
+                  {r.first && <span className="rounded bg-accent px-1.5 text-[10px] font-bold uppercase text-accent-foreground">1st</span>}
+                </span>
               </span>
               <span className="digits text-right">{r.player.march}s</span>
               <span className="digits text-right font-bold">+{r.offset}s</span>

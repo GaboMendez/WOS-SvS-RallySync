@@ -9,7 +9,7 @@ export default defineConfig({
   },
   plugins: [
     ...tanstackStart({
-      server: { entry: "server" },
+      server: { entry: "server/index.tsx" },
     }),
     react(),
     tailwindcss(),
