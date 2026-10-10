@@ -99,7 +99,7 @@ function Index() {
 
   return (
     <div className="mx-auto min-h-screen max-w-5xl px-3 pb-16 pt-4 sm:px-6">
-      <header className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+      <header className="mb-4 grid gap-3">
         <div className="min-w-0">
           <h1 className="truncate font-display text-3xl font-extrabold uppercase sm:text-4xl">
             Rally<span className="text-primary">Sync</span>
@@ -108,7 +108,7 @@ function Index() {
             SFC & SvS coordination · manual tool, not connected to the game
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
           <Toggle on={audio} onClick={() => setAudio(!audio)} label="Sound" />
           <Toggle
             on={vibrate && vibOk}
@@ -121,7 +121,7 @@ function Index() {
             href="https://github.com/GaboMendez/WOS-SvS-RallySync"
             target="_blank"
             rel="noreferrer"
-            className="ml-2 flex items-center justify-center gap-2 px-2 py-2 border-t border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="ml-2 flex items-center justify-center gap-2 px-2 py-2 border-t border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors sm:border-none"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
