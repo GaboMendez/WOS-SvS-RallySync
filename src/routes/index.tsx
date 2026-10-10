@@ -144,12 +144,12 @@ function Index() {
         </div>
       </header>
 
-      <nav className="sticky top-0 z-10 -mx-3 mb-4 grid grid-cols-2 sm:grid-cols-4 gap-1 bg-background/90 px-3 py-2 backdrop-blur sm:mx-0 sm:px-0">
+      <nav className="sticky top-0 z-10 -mx-3 mb-4 flex gap-1 overflow-x-auto bg-background/90 px-3 py-2 backdrop-blur scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:px-0 sm:overflow-x-visible">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded-lg py-3 font-display text-sm font-bold uppercase tracking-wide sm:text-lg ${tab === t.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+            className={`shrink-0 rounded-lg px-3 py-2.5 font-display text-xs font-bold uppercase tracking-wide sm:py-3 sm:text-lg ${tab === t.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
           >
             {t.label}
           </button>

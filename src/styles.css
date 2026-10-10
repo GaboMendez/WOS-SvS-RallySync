@@ -78,3 +78,5 @@
 @utility font-display { font-family: var(--font-display); letter-spacing: 0.02em; }
 @utility digits { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 @utility glow-accent { box-shadow: 0 0 0 2px var(--accent), 0 0 30px color-mix(in oklab, var(--accent) 50%, transparent); }
+@utility scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+@utility scrollbar-hide::-webkit-scrollbar { display: none; }
