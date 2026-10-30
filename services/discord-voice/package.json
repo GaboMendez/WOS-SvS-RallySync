@@ -6,7 +6,7 @@
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
     "doctor": "bun src/doctor.ts",
-    "typecheck": "bun ../../node_modules/typescript/bin/tsc --noEmit"
+    "typecheck": "bunx --bun tsc --noEmit"
   },
   "dependencies": {
     "@rally-sync/discord": "workspace:*",

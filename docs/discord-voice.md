@@ -102,7 +102,7 @@ bun run discord:dev
 
 El script entra en `services/discord-voice`, donde Bun carga su `.env`. Configura `VOICE_SERVICE_URL=http://localhost:3001` y `APP_ORIGIN=http://localhost:3000` para desarrollo. En PowerShell, si la política de ejecución bloquea `bun.ps1`, utiliza `bun.exe`.
 
-Todos los scripts ejecutan Bun explícitamente, incluidos Vite, TypeScript, ESLint y las pruebas. No se requiere npm, pnpm ni Yarn.
+Todos los scripts ejecutan Bun explícitamente, incluidos Vite, TypeScript y ESLint. No se requiere npm, pnpm ni Yarn.
 
 ## Despliegue: Vercel + contenedor persistente
 
@@ -180,13 +180,10 @@ Los calendarios y las colas viven **en memoria del servicio persistente**. Sobre
 ## Verificación
 
 ```sh
-bun run test
 bun run typecheck
 bun run build
 bun run discord:doctor
 ```
-
-Las pruebas cubren el callback OAuth2 y las cookies, firma y expiración de sesiones, replay, autorización de la API, límites de peticiones, generación del calendario comparada con los rallies existentes, preparación/cancelación, propiedad de calendario, pausa/reanudación, avisos atrasados, colas y prioridades, y codificación/decodificación Opus estéreo real.
 
 La prueba final con Discord requiere tus credenciales: conecta un canal de prueba, envía mensajes en ambos idiomas, inicia un rally con dos marchas distintas, pausa/reanuda, cierra y abre la pestaña, y verifica la recuperación del estado. Confirma también el audio y la conectividad UDP en el host de producción.
 

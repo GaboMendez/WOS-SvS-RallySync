@@ -70,14 +70,13 @@ The voice service must be running for the server list and bot controls to work. 
 | `bun run discord:dev`    | Start the voice service with file watching                 |
 | `bun run discord:start`  | Run the persistent voice service                           |
 | `bun run discord:doctor` | Check voice dependencies, encryption, and the Opus encoder |
-| `bun run test`           | Run the Bun test suite                                     |
 | `bun run typecheck`      | Check TypeScript for the web and voice service             |
 | `bun run build`          | Build the web for Vercel                                   |
 | `bun run preview`        | Preview the production web build                           |
 
 ## Tech Stack
 
-- [Bun](https://bun.sh) — Runtime, package manager, workspaces, and test runner
+- [Bun](https://bun.sh) — Runtime, package manager, and workspaces
 - [TanStack Start](https://tanstack.com/start) — Full-stack React framework
 - [React](https://react.dev) 19 — UI library
 - [TypeScript](https://www.typescriptlang.org) — Type safety

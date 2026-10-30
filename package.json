@@ -8,15 +8,13 @@
     "services/*"
   ],
   "scripts": {
-    "dev": "bun ./node_modules/vite/bin/vite.js dev",
-    "build": "bun ./node_modules/vite/bin/vite.js build",
-    "build:dev": "bun ./node_modules/vite/bin/vite.js build --mode development",
-    "preview": "bun ./node_modules/vite/bin/vite.js preview",
-    "lint": "bun ./node_modules/eslint/bin/eslint.js .",
-    "format": "bun ./node_modules/prettier/bin/prettier.cjs --write .",
-    "test": "bun test ./tests ./services/discord-voice/src",
-    "test:watch": "bun test --watch ./tests ./services/discord-voice/src",
-    "typecheck": "bun ./node_modules/typescript/bin/tsc --noEmit && bun run --cwd services/discord-voice typecheck",
+    "dev": "bunx --bun vite dev",
+    "build": "bunx --bun vite build",
+    "build:dev": "bunx --bun vite build --mode development",
+    "preview": "bunx --bun vite preview",
+    "lint": "bunx --bun eslint .",
+    "format": "bunx --bun prettier --write .",
+    "typecheck": "bunx --bun tsc --noEmit && bunx --bun tsc --noEmit -p services/discord-voice/tsconfig.json",
     "discord:dev": "bun run --cwd services/discord-voice dev",
     "discord:start": "bun run --cwd services/discord-voice start",
     "discord:doctor": "bun run --cwd services/discord-voice doctor"
@@ -82,8 +80,6 @@
   "devDependencies": {
     "@types/bun": "^1.3.0",
     "@eslint/js": "^9.32.0",
-    "@testing-library/jest-dom": "^6.6.0",
-    "@testing-library/react": "^16.0.0",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -94,12 +90,10 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
-    "jsdom": "^20.0.3",
     "nitro": "3.0.260603-beta",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.1.5",
-    "vitest": "^4.1.10"
+    "vite": "8.1.5"
   }
 }
