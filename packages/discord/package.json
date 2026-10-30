@@ -1,0 +1,13 @@
+{
+  "name": "@rally-sync/discord",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/contracts.ts",
+    "./security": "./src/security.ts",
+    "./timeline": "./src/timeline.ts"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  }
+}

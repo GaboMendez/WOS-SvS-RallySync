@@ -1,0 +1,17 @@
+{
+  "name": "@rally-sync/discord-voice",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "doctor": "bun src/doctor.ts",
+    "typecheck": "bun ../../node_modules/typescript/bin/tsc --noEmit"
+  },
+  "dependencies": {
+    "@rally-sync/discord": "workspace:*",
+    "@discordjs/voice": "^0.19.0",
+    "discord.js": "^14.22.1",
+    "opusscript": "^0.1.1"
+  }
+}
