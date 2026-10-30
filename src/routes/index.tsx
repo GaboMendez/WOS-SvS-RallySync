@@ -13,6 +13,8 @@ import {
 import { canVibrate } from "@/lib/cues";
 import { Countdown } from "@/components/Countdown";
 import { TagBadge } from "@/components/TagBadge";
+import { DiscordVoiceProvider } from "@/components/DiscordVoice";
+import { useDiscordVoice } from "@/lib/discord/context";
 
 // Asset imports
 import petsActiveNotExpedition from "@/assets/pets-active-not-expedition-facility.png";
@@ -144,26 +146,28 @@ function Index() {
         </div>
       </header>
 
-      <nav className="sticky top-0 z-10 -mx-3 mb-4 flex gap-1 overflow-x-auto bg-background/90 px-3 py-2 backdrop-blur scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:px-0 sm:overflow-x-visible">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`shrink-0 rounded-lg px-3 py-2.5 font-display text-xs font-bold uppercase tracking-wide sm:py-3 sm:text-lg ${tab === t.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <DiscordVoiceProvider>
+        <nav className="sticky top-0 z-10 -mx-3 mb-4 flex gap-1 overflow-x-auto bg-background/90 px-3 py-2 backdrop-blur scrollbar-hide sm:mx-0 sm:grid sm:grid-cols-4 sm:px-0 sm:overflow-x-visible">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`shrink-0 rounded-lg px-3 py-2.5 font-display text-xs font-bold uppercase tracking-wide sm:py-3 sm:text-lg ${tab === t.id ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
 
-      <TabView
-        key={tab}
-        ts={ts}
-        update={update}
-        audio={audio}
-        vibrate={vibrate && vibOk}
-        tabId={tab}
-      />
+        <TabView
+          key={tab}
+          ts={ts}
+          update={update}
+          audio={audio}
+          vibrate={vibrate && vibOk}
+          tabId={tab}
+        />
+      </DiscordVoiceProvider>
     </div>
   );
 }
@@ -203,8 +207,7 @@ function TabView({
   vibrate: boolean;
   tabId: TabId;
 }) {
-  if (tabId === "references") return <ReferencesTab />;
-
+  const voice = useDiscordVoice();
   const team = ts.teams.find((t) => t.id === ts.selectedTeamId) ?? null;
   const members = useMemo(
     () =>
@@ -216,6 +219,11 @@ function TabView({
     [team, ts.players],
   );
   const { rows, longest } = useMemo(() => computeSchedule(members), [members]);
+  const rally = voice?.status?.rally;
+  const planLocked = Boolean(
+    rally && !["done", "error"].includes(rally.phase) && rally.teamKey.startsWith(`${tabId}:`),
+  );
+  if (tabId === "references") return <ReferencesTab />;
 
   const setTeam = (id: string, fn: (ids: string[]) => string[]) =>
     update((t) => ({
@@ -264,7 +272,10 @@ function TabView({
             ))}
           </div>
           {team && (
-            <div className="mt-3 space-y-2 border-t pt-3">
+            <fieldset
+              disabled={planLocked}
+              className="mt-3 space-y-2 border-t pt-3 disabled:opacity-60"
+            >
               <div className="flex gap-2">
                 <input
                   value={team.name}
@@ -324,11 +335,18 @@ function TabView({
                   </IconBtn>
                 </div>
               ))}
-            </div>
+            </fieldset>
           )}
         </section>
 
-        <Roster ts={ts} update={update} team={team} setTeam={setTeam} />
+        <fieldset disabled={planLocked} className="disabled:opacity-60">
+          <Roster ts={ts} update={update} team={team} setTeam={setTeam} />
+        </fieldset>
+        {planLocked && (
+          <p className="text-xs text-muted-foreground">
+            The launch plan is locked while Discord announcements are active.
+          </p>
+        )}
       </div>
 
       <section>
@@ -341,6 +359,7 @@ function TabView({
             rows={rows}
             longest={longest}
             teamName={team.name}
+            teamKey={`${tabId}:${team.id}`}
             audio={audio}
             vibrate={vibrate}
             timerState={(ts.timerStates ?? {})[team.id] ?? null}
