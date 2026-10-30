@@ -30,7 +30,7 @@ A web-based coordination tool for synchronizing rally attacks in Whiteout Surviv
 
 - **Server and Channel Selection** — Choose a shared Discord server and an accessible voice channel, connect or disconnect the bot, and monitor its connection status
 - **English and Spanish TTS** — Send manual rally instructions using Azure Speech and select the speech language from the web
-- **Automatic Rally Announcements** — Announce the 3-2-1 preparation, each group's rally start, marches after the five-minute rally hold, remaining-time warnings, and the final arrival countdown
+- **Automatic Rally Announcements** — Identify each upcoming player or group before their countdown, announce their rally start, and finish speaking once everyone has started
 - **Synchronized Timer Controls** — Start, pause, resume, and reset the same rally schedule from the web; launch plans are locked while their announcements are active
 - **Audio Queues and Recovery** — Prepare and cache speech before starting, prioritize timed instructions over manual speech, clear queued messages, and reconnect after temporary voice interruptions
 - **Authorized Access** — Sign in with Discord OAuth2; bot control requires an allowlisted user ID, server membership, and channel permissions. Web-to-service requests are signed
@@ -147,7 +147,8 @@ Keep the bot token and Azure Speech key in the voice service environment. Privat
 - Each Discord server supports one active rally schedule and one bot voice connection at a time. The rally owner controls its timer; other authorized members with channel access can stop announcements or disconnect the bot.
 - Normal voice channels are supported. Stage channels are not listed.
 - Voice schedules and audio queues are held in service memory. They continue after closing the browser, but are cleared when the voice service restarts.
-- Timed rally instructions can interrupt manual speech or lower-priority clips. Late announcements are discarded, and network or client latency can affect when listeners hear them.
+- Manual messages and complete player countdowns play in order without interrupting one another. Every player or group gets their name followed by a full "3, 2, 1, Go"; pause, cancel, and clear queue still stop pending speech.
+- The visual timer keeps its original schedule. When launch intervals are too short for complete spoken countdowns, voice cues fall progressively behind the visual timer and the intervals between spoken launches may be longer than the planned offsets. Players following voice may therefore arrive at different times.
 
 ## License
 

@@ -5,6 +5,10 @@ import OpusScript from "opusscript";
 
 export type SpeechAudio = Buffer[];
 
+// OpusScript instances share one WASM heap. Keep each encoder's lifetime exclusive,
+// including the yields used to keep rally scheduling responsive.
+let encodingTail: Promise<void> = Promise.resolve();
+
 export interface SpeechProvider {
   get(text: string, language: VoiceLanguage): Promise<SpeechAudio>;
 }
@@ -23,10 +27,39 @@ export const escapeXml = (value: string) =>
   );
 
 /** Convert Azure mono PCM into Discord's stereo 48 kHz, 20 ms Opus packets. */
-export async function encodeSpeech(pcm: Buffer): Promise<SpeechAudio> {
+export function encodeSpeech(pcm: Buffer): Promise<SpeechAudio> {
+  const task = encodingTail
+    .then(() => encodeSpeechExclusive(pcm))
+    .catch((error: unknown) => {
+      if (error instanceof VoiceError) throw error;
+      console.error(JSON.stringify({ event: "speech-encoding-failed", stage: "opus" }));
+      throw new VoiceError(
+        "Could not encode speech audio. Restart the voice service and try again.",
+        503,
+      );
+    });
+  encodingTail = task.then(
+    () => {},
+    () => {},
+  );
+  return task;
+}
+
+async function encodeSpeechExclusive(pcm: Buffer): Promise<SpeechAudio> {
   if (!pcm.length || pcm.length % 2 || pcm.length > 16 * 1024 * 1024) {
     throw new VoiceError("The Speech service returned invalid PCM audio.", 503);
   }
+  // Azure can pad even a single word with over a second of near-silent audio.
+  // Reserve time for speech, not that padding, while retaining quiet word edges.
+  let first = 0;
+  let last = pcm.length;
+  while (first < last && Math.abs(pcm.readInt16LE(first)) <= 64) first += 2;
+  while (last > first && Math.abs(pcm.readInt16LE(last - 2)) <= 64) last -= 2;
+  if (first === last) {
+    throw new VoiceError("The Speech service returned silent audio. Try again.", 503);
+  }
+  // 48 kHz mono PCM uses 96 bytes/ms: retain 40 ms before and 80 ms after speech.
+  pcm = pcm.subarray(Math.max(0, first - 3840), Math.min(pcm.length, last + 7680));
   const encoder = new OpusScript(48_000, 2, OpusScript.Application.AUDIO);
   encoder.setBitrate(48_000);
   const packets: Buffer[] = [];

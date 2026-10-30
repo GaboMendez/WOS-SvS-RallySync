@@ -14,17 +14,11 @@ interface Clip {
   audio: SpeechAudio;
   text: string;
   deadline: number | null;
-  priority: number;
+  kind: "manual" | "instruction";
   rallyId: string | null;
 }
 export interface RallyAudio {
-  announce(
-    audio: SpeechAudio,
-    text: string,
-    rallyId: string,
-    priority: number,
-    deadline: number,
-  ): void;
+  announce(audio: SpeechAudio, text: string, rallyId: string): void;
   stopRally(rallyId: string): void;
   available(): boolean;
 }
@@ -36,7 +30,6 @@ export class GuildAudio implements RallyAudio {
   private readonly queue: Clip[] = [];
   private current: Clip | null = null;
   private online = false;
-  private switching = false;
   onError: (message: string) => void = () => {};
 
   constructor() {
@@ -64,7 +57,8 @@ export class GuildAudio implements RallyAudio {
     this.online = value;
     if (value) this.pump();
     else {
-      this.queue.length = 0;
+      // Resume an interrupted instruction from its beginning after reconnection.
+      if (this.current?.kind === "instruction") this.queue.unshift(this.current);
       this.current = null;
       this.player.stop(true);
     }
@@ -77,27 +71,28 @@ export class GuildAudio implements RallyAudio {
       audio,
       text,
       deadline,
-      priority: -1,
+      kind: "manual",
       rallyId: null,
     });
     this.pump();
   }
 
-  announce(audio: SpeechAudio, text: string, rallyId: string, priority: number, deadline: number) {
-    if (!this.online || performance.now() > deadline) return;
-    if (this.current?.rallyId && this.current.priority > priority) return;
-    // Deadline announcements preempt manual speech and old clips rather than drift.
-    this.switching = true;
-    try {
-      this.current = null;
-      this.player.stop(true);
-      this.play({ audio, text, deadline, priority, rallyId });
-    } finally {
-      this.switching = false;
-    }
+  announce(audio: SpeechAudio, text: string, rallyId: string) {
+    // Complete countdowns keep their arrival order and never expire.
+    this.queue.push({
+      audio,
+      text,
+      deadline: null,
+      kind: "instruction",
+      rallyId,
+    });
+    this.pump();
   }
 
   stopRally(rallyId: string) {
+    for (let index = this.queue.length - 1; index >= 0; index--) {
+      if (this.queue[index]!.rallyId === rallyId) this.queue.splice(index, 1);
+    }
     if (this.current?.rallyId === rallyId) {
       this.current = null;
       this.player.stop(true);
@@ -111,7 +106,7 @@ export class GuildAudio implements RallyAudio {
   }
 
   private pump() {
-    if (this.current || !this.online || this.switching) return;
+    if (this.current || !this.online) return;
     while (this.queue.length) {
       const clip = this.queue.shift()!;
       if (clip.deadline !== null && clip.deadline < performance.now()) continue;

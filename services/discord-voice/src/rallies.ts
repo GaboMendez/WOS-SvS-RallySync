@@ -1,5 +1,10 @@
-import { MAX_AUDIO_LATENESS_MS, type RallyPlan, type RallySnapshot } from "@rally-sync/discord";
-import { buildTimeline, RallyClock, type Announcement } from "@rally-sync/discord/timeline";
+import { type RallyPlan, type RallySnapshot } from "@rally-sync/discord";
+import {
+  buildTimeline,
+  scheduleLaunchSpeech,
+  RallyClock,
+  type Announcement,
+} from "@rally-sync/discord/timeline";
 import type { RallyAudio } from "./audio";
 import type { SpeechAudio, SpeechProvider } from "./tts";
 import { VoiceError } from "./errors";
@@ -15,6 +20,24 @@ interface Run {
   fired: Set<string>;
   error: string | null;
   expiresAt: number;
+  leadMs: number;
+}
+
+// One 20 ms Opus silence packet, used to keep the countdown on one-second beats.
+const SILENCE_PACKET = Buffer.from([0xf8, 0xff, 0xfe]);
+const FRAMES_PER_SECOND = 50;
+
+function countdownAudio(intro: SpeechAudio, numbers: SpeechAudio[], go: SpeechAudio) {
+  const audio = [...intro];
+  for (const number of numbers) {
+    audio.push(...number);
+    for (let frame = number.length; frame < FRAMES_PER_SECOND; frame++) {
+      audio.push(SILENCE_PACKET);
+    }
+  }
+  const beforeGo = audio.length * 20;
+  audio.push(...go);
+  return { audio, beforeGo, total: audio.length * 20 };
 }
 
 /** One authoritative run per guild. Preparation finishes before the clock starts. */
@@ -67,6 +90,7 @@ export class GuildRallies {
       fired: new Set(),
       error: null,
       expiresAt: this.monotonic() + 120_000,
+      leadMs: 1000,
     };
     this.run = run;
     void this.prepareAudio(run);
@@ -74,18 +98,30 @@ export class GuildRallies {
 
   private async prepareAudio(run: Run) {
     let index = 0;
-    const prepareNext = async () => {
-      while (this.run === run && run.phase === "preparing") {
-        const event = run.events[index++];
-        if (!event) break;
-        const audio = await this.speech.get(event.text, run.plan.language);
-        if (this.run !== run || run.phase !== "preparing") return;
-        run.clips.set(event.id, audio);
-      }
-    };
+    const durations = new Map<string, { beforeGo: number; total: number }>();
     try {
+      const [three, two, one, go] = await Promise.all(
+        ["3", "2", "1", run.plan.language === "es" ? "¡Ya!" : "Go!"].map((text) =>
+          this.speech.get(text, run.plan.language),
+        ),
+      );
+      const numbers = [three!, two!, one!];
+      const prepareNext = async () => {
+        while (this.run === run && run.phase === "preparing") {
+          const event = run.events[index++];
+          if (!event) break;
+          const intro = await this.speech.get(event.text, run.plan.language);
+          if (this.run !== run || run.phase !== "preparing") return;
+          const clip = countdownAudio(intro, numbers, go!);
+          run.clips.set(event.id, clip.audio);
+          durations.set(event.id, { beforeGo: clip.beforeGo, total: clip.total });
+        }
+      };
       await Promise.all([prepareNext(), prepareNext(), prepareNext()]);
       if (this.run === run && run.phase === "preparing") {
+        const scheduled = scheduleLaunchSpeech(run.events, durations);
+        run.events = scheduled.events;
+        run.leadMs = scheduled.leadMs;
         run.phase = "ready";
         run.expiresAt = this.monotonic() + 120_000;
       }
@@ -112,7 +148,7 @@ export class GuildRallies {
     if (run.phase !== "ready")
       throw new VoiceError("Rally audio is still preparing or has failed.", 409);
     if (!this.audio.available()) throw new VoiceError("The voice connection is not ready.", 409);
-    run.clock.start();
+    run.clock.start(run.leadMs);
     run.phase = "running";
   }
   pause(id: string, actor: string) {
@@ -153,23 +189,17 @@ export class GuildRallies {
       this.audio.stopRally(run.plan.id);
     }
     if (run.phase !== "running") return;
+    // Keep due instructions pending while voice reconnects instead of losing them.
+    if (!this.audio.available()) return;
     const elapsed = run.clock.elapsed;
     for (const event of run.events) {
       if (event.at > elapsed || run.fired.has(event.id)) continue;
       run.fired.add(event.id);
-      const late = elapsed - event.at;
       const audio = run.clips.get(event.id);
-      if (late <= MAX_AUDIO_LATENESS_MS && audio && this.audio.available()) {
-        this.audio.announce(
-          audio,
-          event.text,
-          run.plan.id,
-          event.priority,
-          this.monotonic() + MAX_AUDIO_LATENESS_MS - late,
-        );
-      }
+      if (!audio) continue;
+      this.audio.announce(audio, event.text, run.plan.id);
     }
-    if (elapsed >= run.duration) {
+    if (elapsed >= run.duration && run.fired.size === run.events.length) {
       run.clock.pause();
       run.phase = "done";
       run.clips.clear();

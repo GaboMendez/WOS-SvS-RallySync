@@ -152,15 +152,15 @@ Los planes se bloquean para edición mientras sus anuncios están activos. Cambi
 
 Los mensajes manuales se procesan en orden de llegada, con un máximo de 20 pendientes y una caducidad de 30 segundos en la cola de reproducción. **Clear queue** descarta los pendientes y detiene el clip actual; los siguientes avisos del calendario continúan programados.
 
-Los avisos puntuales interrumpen el audio manual. Los inicios de rally y marcha tienen prioridad sobre los números del countdown; si coinciden, se agrupan o se omite el aviso de menor prioridad. Un clip largo puede quedar cortado por el siguiente inicio. Conviene usar nombres breves e instrucciones manuales cortas.
+Los mensajes manuales y las cuentas completas de cada jugador se reproducen en orden de llegada. Un aviso nuevo no corta el audio anterior y las cuentas no caducan por retrasos de reproducción. Pausar o cancelar un rally también elimina sus mensajes pendientes de la cola.
 
 ## Sincronización y recuperación
 
-El servicio calcula los mismos offsets que la web: `marcha_más_larga - marcha_del_jugador`. Reproduce preparación 3-2-1, inicio de cada grupo, salida de marcha cinco minutos después, avisos de minutos restantes y los últimos diez segundos hasta la llegada conjunta.
+El servicio calcula los mismos offsets que la web: `marcha_más_larga - marcha_del_jugador`. Anuncia al primer jugador y después dice «3, 2, 1, ¡Ya!». Para cada jugador o grupo siguiente dice su nombre y repite la cuenta completa, sin presentación del equipo. Los números comienzan separados por un segundo como mínimo. Los anuncios automáticos terminan después de la última cuenta; el temporizador visual continúa con las fases de rally, marcha y llegada.
 
 El reloj del servicio es monotónico y el plan completo se entrega antes del inicio. Un ticker de 20 ms decide qué reproducir; no se envía una petición desde el navegador por cada segundo. La web estima el tránsito de ida y vuelta, descuenta el tiempo de procesamiento de ambos servidores y corrige periódicamente su visualización contra ese reloj.
 
-La programación no garantiza que todos los clientes oigan el audio en el mismo milisegundo: influyen Discord, la red y los dispositivos. Si un aviso llega más de 900 ms tarde, se descarta. Una reconexión no reproduce en ráfaga avisos que ya perdieron su momento.
+La programación no garantiza que todos los clientes oigan el audio en el mismo milisegundo: influyen Discord, la red y los dispositivos. Las cuentas completas conservan su orden aunque se retrasen; durante una reconexión quedan pendientes y la cuenta interrumpida se repite completa al recuperar la voz. El temporizador visual conserva sus horarios. Si los intervalos entre jugadores son demasiado cortos para pronunciar las cuentas completas, el retraso de la voz se acumula y las salidas por voz quedan más separadas de lo previsto. Los jugadores que sigan la voz pueden llegar en momentos diferentes.
 
 Discord.js mantiene Gateway y el servicio intenta recuperar la voz con espera exponencial y un máximo de cinco reintentos. Si Discord expulsa al bot, se espera brevemente un posible traslado antes de cerrar la conexión. La interfaz muestra el estado y permite reconectar.
 

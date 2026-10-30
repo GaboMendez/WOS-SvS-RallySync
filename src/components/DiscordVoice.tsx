@@ -364,7 +364,7 @@ export function DiscordVoiceProvider({ children }: { children: ReactNode }) {
                   disabled={(!connected && !automatic) || preparing}
                   onChange={(event) => setAutomatic(event.target.checked)}
                 />
-                Announce rally starts, marches and arrival countdowns for new countdowns
+                Announce each player's rally start for new countdowns
               </label>
               <form
                 className="flex gap-2"

@@ -4,63 +4,46 @@ export interface Announcement {
   id: string;
   at: number;
   text: string;
-  priority: number;
 }
 
 export function buildTimeline(plan: RallyPlan): { events: Announcement[]; duration: number } {
   const es = plan.language === "es";
-  const longest = Math.max(...plan.players.map((p) => p.march));
-  const duration = RALLY_HOLD_MS + longest * 1000;
+  const longest = Math.max(...plan.players.map((player) => player.march));
   const groups = new Map<number, string[]>();
   for (const player of plan.players) {
-    const offset = (longest - player.march) * 1000;
-    groups.set(offset, [...(groups.get(offset) ?? []), player.name]);
+    const at = (longest - player.march) * 1000;
+    groups.set(at, [...(groups.get(at) ?? []), player.name]);
   }
-  const events: Announcement[] = [3, 2, 1].map((n) => ({
-    id: `pre-${n}`,
-    at: -n * 1000,
-    text: String(n),
-    priority: 1,
-  }));
-  for (const [at, names] of groups) {
-    events.push({
-      id: `rally-${at}`,
-      at,
-      text: es ? `${names.join(", ")}, inicien rally.` : `${names.join(", ")}, start rally.`,
-      priority: 3,
+  const events = [...groups]
+    .sort(([a], [b]) => a - b)
+    .map(([at, names], index): Announcement => {
+      const players = names.join(", ");
+      const text = index
+        ? es
+          ? `${names.length === 1 ? "Sigue" : "Siguen"} ${players} en`
+          : `Next, ${players} in`
+        : es
+          ? `${players} ${names.length === 1 ? "inicia" : "inician"} un rally en`
+          : `${players} ${names.length === 1 ? "starts" : "start"} a rally in`;
+      return { id: `rally-${at}`, at, text };
     });
-    events.push({
-      id: `march-${at}`,
-      at: at + RALLY_HOLD_MS,
-      text: es ? `${names.join(", ")}, marchando.` : `${names.join(", ")}, marching.`,
-      priority: 3,
-    });
-  }
-  for (const seconds of [300, 240, 180, 120, 60]) {
-    // The first start is more useful than a simultaneous five minute warning.
-    const at = duration - seconds * 1000;
-    events.push({
-      id: `arrival-${seconds}`,
-      at,
-      text: es ? `Llegada en ${seconds / 60} minutos.` : `Arrival in ${seconds / 60} minutes.`,
-      priority: 0,
-    });
-  }
-  for (let n = 10; n >= 1; n--) {
-    events.push({ id: `final-${n}`, at: duration - n * 1000, text: String(n), priority: 1 });
-  }
-  events.push({
-    id: "arrived",
-    at: duration,
-    text: es ? "Todos los rallies llegaron." : "All rallies arrived.",
-    priority: 4,
+  return { events, duration: RALLY_HOLD_MS + longest * 1000 };
+}
+
+/** Schedule complete countdowns without overlapping earlier players' audio. */
+export function scheduleLaunchSpeech(
+  events: Announcement[],
+  durations: ReadonlyMap<string, { beforeGo: number; total: number }>,
+): { events: Announcement[]; leadMs: number } {
+  let previousEnd = -Infinity;
+  const scheduled = events.map((event) => {
+    const duration = durations.get(event.id);
+    if (!duration) throw new Error("Missing rally audio duration.");
+    const at = Math.max(event.at - duration.beforeGo, previousEnd + 100);
+    previousEnd = at + duration.total;
+    return { ...event, at };
   });
-  // Never speak a countdown or warning over a launch at the same instant.
-  const byTime = new Map<number, Announcement>();
-  for (const event of events) {
-    if (event.priority >= (byTime.get(event.at)?.priority ?? -1)) byTime.set(event.at, event);
-  }
-  return { events: [...byTime.values()].sort((a, b) => a.at - b.at), duration };
+  return { events: scheduled, leadMs: Math.max(1000, -RALLY_PRE_MS - scheduled[0]!.at + 500) };
 }
 
 /** Uses monotonic elapsed time so NTP adjustments cannot move a running rally. */
