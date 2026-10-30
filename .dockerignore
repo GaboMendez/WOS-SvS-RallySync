@@ -1,0 +1,10 @@
+.git
+**/node_modules
+.vercel
+.tanstack
+.output
+.env
+.env.*
+**/.env
+**/.env.*
+*.log

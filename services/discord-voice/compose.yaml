@@ -1,0 +1,23 @@
+services:
+  voice:
+    build:
+      context: ../..
+      dockerfile: services/discord-voice/Dockerfile
+    env_file: .env
+    restart: unless-stopped
+    expose: ["3001"]
+    init: true
+  https:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [voice]
+volumes:
+  caddy_data:
+  caddy_config:

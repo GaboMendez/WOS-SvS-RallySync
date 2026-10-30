@@ -1,0 +1,4 @@
+# Point this domain at the host, then replace it before starting Compose.
+voice.example.com {
+  reverse_proxy voice:3001
+}

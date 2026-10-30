@@ -47,6 +47,12 @@ bun run dev
 
 ## Deployment
 
+### Discord voice — 3496_BOT
+
+The web can control **3496_BOT** (`1519475189128233001`) through a separate persistent Bun service. It supports authorized Discord sign-in, server/channel selection, manual English/Spanish TTS and automatic rally announcements synchronized with the existing timers.
+
+See **[Discord setup, security and deployment](docs/discord-voice.md)** for environment variables, OAuth2 setup, Azure Speech, and the Docker deployment. Start the service with `bun run discord:dev`; keep the web on Vercel. Run checks with `bun run test` and `bun run typecheck`.
+
 This project is configured for Vercel deployment:
 
 ```sh
