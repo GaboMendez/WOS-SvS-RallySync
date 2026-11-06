@@ -220,9 +220,7 @@ function TabView({
   );
   const { rows, longest } = useMemo(() => computeSchedule(members), [members]);
   const rally = voice?.status?.rally;
-  const planLocked = Boolean(
-    rally && !["done", "error"].includes(rally.phase) && rally.teamKey.startsWith(`${tabId}:`),
-  );
+  const planLocked = false;
   if (tabId === "references") return <ReferencesTab />;
 
   const setTeam = (id: string, fn: (ids: string[]) => string[]) =>
@@ -342,11 +340,6 @@ function TabView({
         <fieldset disabled={planLocked} className="disabled:opacity-60">
           <Roster ts={ts} update={update} team={team} setTeam={setTeam} />
         </fieldset>
-        {planLocked && (
-          <p className="text-xs text-muted-foreground">
-            The launch plan is locked while Discord announcements are active.
-          </p>
-        )}
       </div>
 
       <section>

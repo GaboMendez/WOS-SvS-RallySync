@@ -131,7 +131,7 @@ export class VoiceController {
     return channel;
   }
 
-  private status(state: GuildState): VoiceStatus {
+  private status(state: GuildState, rallyId?: string): VoiceStatus {
     const connection = state.connection?.state.status;
     return {
       gateway: this.ready() ? "ready" : "reconnecting",
@@ -150,7 +150,7 @@ export class VoiceController {
       queueLength: state.audio.queueLength + state.pendingSpeech.size,
       speaking: state.audio.speaking,
       error: state.error,
-      rally: state.rallies.snapshot(),
+      rally: state.rallies.snapshot(Date.now(), rallyId),
     };
   }
 
@@ -193,7 +193,7 @@ export class VoiceController {
           .sort((a, b) => a.name.localeCompare(b.name)),
       };
     }
-    if (input.op === "status") return { serverNow: Date.now(), status: this.status(state) };
+    if (input.op === "status") return { serverNow: Date.now(), status: this.status(state, input.rallyId) };
     // Serialize writes so connect/disconnect and cancellation cannot race.
     const previous = this.locks.get(guild.id) ?? Promise.resolve();
     const next = previous

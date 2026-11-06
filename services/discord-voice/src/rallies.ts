@@ -42,15 +42,15 @@ function countdownAudio(intro: SpeechAudio, numbers: SpeechAudio[], go: SpeechAu
 
 /** One authoritative run per guild. Preparation finishes before the clock starts. */
 export class GuildRallies {
-  private run: Run | null = null;
+  private runs = new Map<string, Run>();
   constructor(
     private readonly speech: SpeechProvider,
     private readonly audio: RallyAudio,
     private readonly monotonic: () => number = () => performance.now(),
   ) {}
 
-  snapshot(wallNow = Date.now()): RallySnapshot | null {
-    const run = this.run;
+  snapshot(wallNow = Date.now(), id?: string): RallySnapshot | null {
+    const run = id ? this.runs.get(id) : [...this.runs.values()].find((candidate) => !["done", "error"].includes(candidate.phase)) ?? [...this.runs.values()].at(-1);
     if (!run) return null;
     const elapsed = run.clock.elapsed;
     return {
@@ -66,17 +66,12 @@ export class GuildRallies {
   }
 
   prepare(plan: RallyPlan, actor: string) {
-    if (this.run?.plan.id === plan.id) {
-      if (this.run.ownerId !== actor || JSON.stringify(this.run.plan) !== JSON.stringify(plan)) {
+    const existing = this.runs.get(plan.id);
+    if (existing) {
+      if (existing.ownerId !== actor || JSON.stringify(existing.plan) !== JSON.stringify(plan)) {
         throw new VoiceError("That rally ID is already in use.", 409);
       }
       return;
-    }
-    if (this.run && !["done", "error"].includes(this.run.phase)) {
-      throw new VoiceError(
-        "Another rally is active in this server. Cancel it before starting a new one.",
-        409,
-      );
     }
     const { events, duration } = buildTimeline(plan);
     const run: Run = {
@@ -92,7 +87,7 @@ export class GuildRallies {
       expiresAt: this.monotonic() + 120_000,
       leadMs: 1000,
     };
-    this.run = run;
+    this.runs.set(plan.id, run);
     void this.prepareAudio(run);
   }
 
@@ -100,25 +95,25 @@ export class GuildRallies {
     let index = 0;
     const durations = new Map<string, { beforeGo: number; total: number }>();
     try {
-      const [three, two, one, go] = await Promise.all(
-        ["3", "2", "1", run.plan.language === "es" ? "¡Ya!" : "Go!"].map((text) =>
+      const [five, four, three, two, one, go] = await Promise.all(
+        ["5", "4", "3", "2", "1", run.plan.language === "es" ? "¡Ya!" : "Go!"].map((text) =>
           this.speech.get(text, run.plan.language),
         ),
       );
-      const numbers = [three!, two!, one!];
+      const numbers = [five!, four!, three!, two!, one!];
       const prepareNext = async () => {
-        while (this.run === run && run.phase === "preparing") {
+        while (this.runs.get(run.plan.id) === run && run.phase === "preparing") {
           const event = run.events[index++];
           if (!event) break;
           const intro = await this.speech.get(event.text, run.plan.language);
-          if (this.run !== run || run.phase !== "preparing") return;
-          const clip = countdownAudio(intro, numbers, go!);
+          if (this.runs.get(run.plan.id) !== run || run.phase !== "preparing") return;
+          const clip = countdownAudio(intro, event === run.events[0] ? numbers : numbers.slice(2), go!);
           run.clips.set(event.id, clip.audio);
           durations.set(event.id, { beforeGo: clip.beforeGo, total: clip.total });
         }
       };
       await Promise.all([prepareNext(), prepareNext(), prepareNext()]);
-      if (this.run === run && run.phase === "preparing") {
+      if (this.runs.get(run.plan.id) === run && run.phase === "preparing") {
         const scheduled = scheduleLaunchSpeech(run.events, durations);
         run.events = scheduled.events;
         run.leadMs = scheduled.leadMs;
@@ -126,7 +121,7 @@ export class GuildRallies {
         run.expiresAt = this.monotonic() + 120_000;
       }
     } catch (error) {
-      if (this.run === run && run.phase === "preparing") {
+      if (this.runs.get(run.plan.id) === run && run.phase === "preparing") {
         run.phase = "error";
         run.error = error instanceof VoiceError ? error.message : "Could not prepare rally audio.";
         run.clips.clear();
@@ -135,11 +130,12 @@ export class GuildRallies {
   }
 
   private requireRun(id: string, actor: string, ownerOnly = true): Run {
-    if (!this.run || this.run.plan.id !== id)
+    const run = this.runs.get(id);
+    if (!run)
       throw new VoiceError("This rally is no longer active.", 409);
-    if (ownerOnly && this.run.ownerId !== actor)
+    if (ownerOnly && run.ownerId !== actor)
       throw new VoiceError("Only the rally owner can change its timer.", 403);
-    return this.run;
+    return run;
   }
 
   start(id: string, actor: string) {
@@ -169,19 +165,21 @@ export class GuildRallies {
     run.phase = "running";
   }
   cancel(id: string, actor: string) {
-    if (!this.run) return;
+    if (!this.runs.has(id)) return;
     // Any explicitly authorized guild member can emergency-stop a rally.
     this.requireRun(id, actor, false);
     this.clear();
   }
   clear() {
-    if (this.run) this.audio.stopRally(this.run.plan.id);
-    this.run = null;
+    for (const run of this.runs.values()) this.audio.stopRally(run.plan.id);
+    this.runs.clear();
   }
 
   tick() {
-    const run = this.run;
-    if (!run) return;
+    for (const run of this.runs.values()) this.tickRun(run);
+  }
+
+  private tickRun(run: Run) {
     if (["preparing", "ready", "paused"].includes(run.phase) && this.monotonic() > run.expiresAt) {
       run.phase = "error";
       run.error = "The rally expired. Start a new countdown.";

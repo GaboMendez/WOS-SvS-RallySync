@@ -174,9 +174,6 @@ export function Countdown({
       if (ownRemote?.phase === "preparing")
         throw new Error("Speech is still preparing. Try again when it is ready.");
       if (voice?.automatic) {
-        if (ownRemote && !["done", "error"].includes(ownRemote.phase)) {
-          throw new Error("A rally is already active. Reset it before starting again.");
-        }
         const timed = await voice.startRally({
           teamKey,
           teamName,

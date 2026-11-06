@@ -158,7 +158,7 @@ export function DiscordVoiceProvider({ children }: { children: ReactNode }) {
           if (!mounted.current || performance.now() > deadline)
             throw new Error("Audio preparation timed out. Try again.");
           await new Promise<void>((resolve) => setTimeout(resolve, 1500));
-          timed = await request({ op: "status", guildId });
+          timed = await request({ op: "status", guildId, rallyId: id });
         }
         if (!mounted.current) throw new Error("The countdown was cancelled.");
         const rally = timed.reply.status?.rally;
@@ -168,7 +168,7 @@ export function DiscordVoiceProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         // Resolve a lost start response before reporting failure or leaving an orphan run.
         try {
-          const current = await request({ op: "status", guildId });
+          const current = await request({ op: "status", guildId, rallyId: id });
           if (current.reply.status?.rally?.id === id) {
             if (current.reply.status.rally.phase === "running") return current;
             await request({ op: "cancel", guildId, rallyId: id });
@@ -198,7 +198,7 @@ export function DiscordVoiceProvider({ children }: { children: ReactNode }) {
   const activeRally =
     status?.rally && !["done", "error"].includes(status.rally.phase) ? status.rally : null;
   const connected = status?.connection === "ready";
-  const selectionLocked = busy || preparing || Boolean(activeRally);
+  const selectionLocked = busy || preparing;
 
   return (
     <Context.Provider

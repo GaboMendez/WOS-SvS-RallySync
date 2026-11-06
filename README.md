@@ -144,10 +144,10 @@ Keep the bot token and Azure Speech key in the voice service environment. Privat
 
 ### Current Limits
 
-- Each Discord server supports one active rally schedule and one bot voice connection at a time. The rally owner controls its timer; other authorized members with channel access can stop announcements or disconnect the bot.
+- Each Discord server can run multiple rally schedules through one bot voice connection. Each rally owner controls their timer; other authorized members with channel access can stop announcements or disconnect the bot.
 - Normal voice channels are supported. Stage channels are not listed.
 - Voice schedules and audio queues are held in service memory. They continue after closing the browser, but are cleared when the voice service restarts.
-- Manual messages and complete player countdowns play in order without interrupting one another. Every player or group gets their name followed by a full "3, 2, 1, Go"; pause, cancel, and clear queue still stop pending speech.
+- Manual messages and complete player countdowns play in order without interrupting one another. Every player or group gets their name followed by a full "5, 4, 3, 2, 1, Go"; pause, cancel, and clear queue still stop pending speech.
 - The visual timer keeps its original schedule. When launch intervals are too short for complete spoken countdowns, voice cues fall progressively behind the visual timer and the intervals between spoken launches may be longer than the planned offsets. Players following voice may therefore arrive at different times.
 
 ## License

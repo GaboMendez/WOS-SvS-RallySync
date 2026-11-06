@@ -39,7 +39,7 @@ const rallyId = { ...guildId, rallyId: z.string().uuid() };
 export const voiceRequestSchema = z.discriminatedUnion("op", [
   z.object({ op: z.literal("guilds") }).strict(),
   z.object({ op: z.literal("channels"), ...guildId }).strict(),
-  z.object({ op: z.literal("status"), ...guildId }).strict(),
+  z.object({ op: z.literal("status"), ...guildId, rallyId: z.string().uuid().optional() }).strict(),
   z.object({ op: z.literal("connect"), ...guildId, channelId: snowflake }).strict(),
   z.object({ op: z.literal("disconnect"), ...guildId }).strict(),
   z.object({ op: z.literal("clearQueue"), ...guildId }).strict(),
